@@ -1,0 +1,5 @@
+# KEDA on the site clusters: it scales the standby site when the primary fails.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - keda.yaml

@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chaos-mesh
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: chaos-mesh
+  namespace: flux-system
+spec:
+  interval: 24h
+  url: https://charts.chaos-mesh.org
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: chaos-mesh
+  namespace: flux-system
+spec:
+  interval: 30m
+  releaseName: chaos-mesh
+  targetNamespace: chaos-mesh
+  chart:
+    spec:
+      chart: chaos-mesh
+      version: 2.8.8
+      sourceRef:
+        kind: HelmRepository
+        name: chaos-mesh
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  values:
+    chaosDaemon:
+      runtime: containerd
+      # Hostman's nodes run k0s, which keeps containerd's socket under /run/k0s.
+      socketPath: /run/k0s/containerd.sock
+    dashboard:
+      securityMode: true # the dashboard asks for a ServiceAccount token
+      service:
+        type: ClusterIP # reached through the Gateway at CHAOS_HOST, not a node port
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: chaos-dashboard
+  namespace: chaos-mesh
+spec:
+  parentRefs:
+    - name: ${GATEWAY_NAME:=public}
+      namespace: ${GATEWAY_NAMESPACE:=gateway-system}
+  hostnames:
+    - ${CHAOS_HOST}
+  rules:
+    - backendRefs:
+        - name: chaos-dashboard
+          port: 2333
+---
+# Dashboard login: a token for this ServiceAccount (it's a demo, so a long-lived one is fine):
+#   kubectl -n chaos-mesh create token chaos-admin --duration=720h
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chaos-admin
+  namespace: chaos-mesh
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: chaos-admin
+rules:
+  - apiGroups: [""]
+    resources: [pods, namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [chaos-mesh.org]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-admin
+subjects:
+  - kind: ServiceAccount
+    name: chaos-admin
+    namespace: chaos-mesh

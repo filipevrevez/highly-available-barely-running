@@ -1,0 +1,60 @@
+# "Is it alive?": a blackbox probe of each site cluster's own address every 5 s. KEDA on the
+# other cluster scales up on probe_success{target_cluster=...} == 0 (gitops/failover).
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: blackbox-exporter
+  namespace: flux-system
+spec:
+  interval: 30m
+  releaseName: blackbox-exporter
+  targetNamespace: monitoring
+  chart:
+    spec:
+      chart: prometheus-blackbox-exporter
+      version: 11.21.3
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+  values:
+    config:
+      modules:
+        http_2xx:
+          prober: http
+          timeout: 4s
+          http:
+            preferred_ip_protocol: ip4
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: site-primary
+  namespace: monitoring
+spec:
+  interval: 5s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter-prometheus-blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - ${PRIMARY_URL}
+      labels:
+        target_cluster: ${PRIMARY_CLUSTER}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: site-standby
+  namespace: monitoring
+spec:
+  interval: 5s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter-prometheus-blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - ${STANDBY_URL}
+      labels:
+        target_cluster: ${STANDBY_CLUSTER}

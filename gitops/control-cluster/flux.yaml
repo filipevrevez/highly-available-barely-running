@@ -1,0 +1,61 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/infrastructure
+  prune: true
+  wait: true
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: gateway-api-crds
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: config
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/config
+  prune: true
+  wait: true
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: control
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/control
+  prune: true
+  timeout: 15m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: config
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

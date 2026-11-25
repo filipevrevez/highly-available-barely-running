@@ -1,0 +1,43 @@
+# DNS-01 through Cloudflare (token Secret from OpenTofu), so certificates issue before any traffic arrives.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-dns
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ${ACME_EMAIL}
+    privateKeySecretRef:
+      name: letsencrypt-dns
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: token
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cluster
+  namespace: gateway-system
+spec:
+  secretName: cluster-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-dns
+  dnsNames:
+    - "*.${CLUSTER_DOMAIN}"
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: site
+  namespace: gateway-system
+spec:
+  secretName: site-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-dns
+  dnsNames:
+    - ${SITE_HOST}

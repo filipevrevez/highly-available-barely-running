@@ -1,0 +1,19 @@
+# Porto's podinfo answers 800 ms late for 5 minutes. Slow is not down: the probe still
+# passes (4 s timeout), so there is no failover. Good for showing what the floor does not cover.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: porto-slow
+  namespace: kcd
+spec:
+  remoteCluster: porto
+  action: delay
+  mode: all
+  duration: 5m
+  selector:
+    namespaces: [kcd]
+    labelSelectors:
+      app.kubernetes.io/name: podinfo
+  delay:
+    latency: 800ms
+    jitter: 100ms

@@ -1,0 +1,7 @@
+# Lets the control cluster's Chaos Mesh in: it installs its own release here and runs experiments,
+# so this ServiceAccount is cluster-admin. Its token (Secret chaos-remote in kube-system) goes into
+# the control cluster's <cluster>-kubeconfig Secret (Terraform, second apply).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - serviceaccount.yaml

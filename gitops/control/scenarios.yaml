@@ -1,0 +1,78 @@
+# The failure scenarios as Chaos Mesh Schedules, created paused so they sit in the dashboard ready to run
+# (the same experiments as chaos/, which you can also apply directly).
+#   Resume: the experiment starts within a minute and runs 5 minutes in the site cluster.
+#   Pause:  do it as soon as it has started. Paused or not, the running one finishes its 5 minutes
+#           (or delete it); left resumed, a new run starts a minute after each one ends.
+# Flux creates these once and never overwrites them (ssa: IfNotPresent), so Resume/Pause in the
+# dashboard stick; to change one from Git, delete it and let Flux recreate it.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: ${PRIMARY_CLUSTER}-down
+  namespace: kcd
+  annotations:
+    experiment.chaos-mesh.org/pause: "true"
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  schedule: "@every 1m"
+  concurrencyPolicy: Forbid
+  historyLimit: 1
+  type: PodChaos
+  podChaos:
+    remoteCluster: ${PRIMARY_CLUSTER}
+    action: pod-failure
+    mode: all
+    duration: 5m
+    selector:
+      namespaces: [kcd]
+      labelSelectors:
+        app.kubernetes.io/name: podinfo
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: ${STANDBY_CLUSTER}-down
+  namespace: kcd
+  annotations:
+    experiment.chaos-mesh.org/pause: "true"
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  schedule: "@every 1m"
+  concurrencyPolicy: Forbid
+  historyLimit: 1
+  type: PodChaos
+  podChaos:
+    remoteCluster: ${STANDBY_CLUSTER}
+    action: pod-failure
+    mode: all
+    duration: 5m
+    selector:
+      namespaces: [kcd]
+      labelSelectors:
+        app.kubernetes.io/name: podinfo
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: ${PRIMARY_CLUSTER}-slow
+  namespace: kcd
+  annotations:
+    experiment.chaos-mesh.org/pause: "true"
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  schedule: "@every 1m"
+  concurrencyPolicy: Forbid
+  historyLimit: 1
+  type: NetworkChaos
+  networkChaos:
+    remoteCluster: ${PRIMARY_CLUSTER}
+    action: delay
+    mode: all
+    duration: 5m
+    selector:
+      namespaces: [kcd]
+      labelSelectors:
+        app.kubernetes.io/name: podinfo
+    delay:
+      latency: 800ms
+      jitter: 100ms

@@ -1,0 +1,21 @@
+# Copy to terraform.tfvars (git-ignored). Set the tokens as TF_VAR_hm_token and
+# TF_VAR_cloudflare_api_token in the environment, not in this file.
+parent_zone        = "example.com"
+cloudflare_zone_id = "" # parent_zone's ID, from its Cloudflare Overview page
+site_host          = "kcd.example.com"
+acme_email         = "you@example.com"
+git_url            = "https://github.com/<you>/highly-available-barely-running"
+primary_geo_tag    = "porto"
+
+# The two site clusters. Porto serves while healthy and keeps 3 replicas; Lisboa is the standby with a
+# pilot light of 1. Each scales to failover_replicas (default 6) when the other one fails.
+clusters = {
+  porto  = { geo_tag = "porto", message = "Hostman · Porto", color = "#0f5fb4", min_replicas = 3 }
+  lisboa = { geo_tag = "lisboa", message = "Hostman · Lisboa", color = "#1e8e3e", min_replicas = 1 }
+}
+
+# The control cluster (Prometheus, Grafana, Chaos Mesh) is called "control" unless you set:
+# control = { name = "control" }
+
+# Second apply, once every Gateway has a load balancer IP and Flux has finished on all three clusters:
+# second_apply = true

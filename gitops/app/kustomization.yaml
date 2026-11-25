@@ -1,0 +1,30 @@
+# The talk's public site on each cluster: the phone page ("who is answering you?") at /,
+# the deck at /slides.html, and podinfo answering /api/info with this cluster's name and colour.
+# k8gb serves GSLB_HOST with failover to PRIMARY_GEO_TAG; SITE_HOST is a CNAME to it.
+# Flux substitutes the variables below (see the README in this folder).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: kcd
+resources:
+  - namespace.yaml
+  - podinfo.yaml
+  - site.yaml
+  - httproute.yaml
+  - gslb.yaml
+configMapGenerator:
+  - name: site
+    files:
+      - site/index.html
+      - site/slides.html
+    options:
+      annotations:
+        # The pages are served as they are: no ${...} substitution inside them.
+        kustomize.toolkit.fluxcd.io/substitute: disabled
+  # The logos the phone page loads from /assets/ (the deck has its images inlined).
+  - name: site-assets
+    files:
+      - site/assets/millennium-bcp.svg
+      - site/assets/supermodular.svg
+    options:
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled

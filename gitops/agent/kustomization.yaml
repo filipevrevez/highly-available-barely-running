@@ -1,0 +1,7 @@
+# Metrics from a site cluster to the control cluster: Prometheus in agent mode (no storage, no
+# queries) with kube-state-metrics and node-exporter, remote-writing every series with a
+# cluster label. Flux substitutes CLUSTER_NAME and METRICS_REMOTE_WRITE_URL.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - agent.yaml

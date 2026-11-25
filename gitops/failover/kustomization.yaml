@@ -1,0 +1,9 @@
+# The failover floor: podinfo keeps APP_MIN_REPLICAS while the peer cluster answers, and scales to
+# FAILOVER_REPLICAS when the control cluster's probe of the peer fails. If the control cluster's
+# Prometheus is unreachable, KEDA falls back to FAILOVER_REPLICAS too (the safe side).
+# Flux substitutes PROMETHEUS_URL, PEER_CLUSTER, APP_MIN_REPLICAS and FAILOVER_REPLICAS.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: kcd
+resources:
+  - scaledobject.yaml

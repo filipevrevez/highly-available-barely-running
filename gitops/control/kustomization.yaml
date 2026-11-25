@@ -1,0 +1,12 @@
+# The control cluster: Prometheus and Grafana to watch the failover, Chaos Mesh to cause it.
+# Grafana's admin login (Secret monitoring/grafana-admin) and the monitoring namespace come from Terraform.
+# No persistent volumes: everything is on the node's disk and Prometheus keeps 3 days.
+# Flux substitutes GRAFANA_HOST, CHAOS_HOST, PRIMARY_CLUSTER/PRIMARY_URL, STANDBY_CLUSTER/STANDBY_URL (and GATEWAY_NAME / GATEWAY_NAMESPACE, defaulting to public / gateway-system).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - monitoring.yaml
+  - probes.yaml
+  - chaos-mesh.yaml
+  - remote-clusters.yaml
+  - scenarios.yaml

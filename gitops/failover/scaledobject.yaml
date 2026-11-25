@@ -1,0 +1,27 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: podinfo
+spec:
+  scaleTargetRef:
+    name: podinfo
+  minReplicaCount: ${APP_MIN_REPLICAS}
+  maxReplicaCount: ${FAILOVER_REPLICAS}
+  pollingInterval: 5
+  fallback:
+    failureThreshold: 3
+    replicas: ${FAILOVER_REPLICAS}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+        scaleDown:
+          stabilizationWindowSeconds: 60
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: ${PROMETHEUS_URL}
+        # 0 while the peer answers, FAILOVER_REPLICAS when it doesn't (or has no probe result).
+        query: (1 - (max(probe_success{target_cluster="${PEER_CLUSTER}"}) or vector(0))) * ${FAILOVER_REPLICAS}
+        threshold: "1"

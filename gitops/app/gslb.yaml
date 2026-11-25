@@ -1,0 +1,33 @@
+# Failover: GSLB_HOST answers with the primary cluster's Gateway while its podinfo is healthy,
+# otherwise with the other cluster's. Same object in every cluster.
+apiVersion: k8gb.io/v1beta1
+kind: Gslb
+metadata:
+  name: site
+  annotations:
+    # k8gb's own address (clusterExposedIPs) is its DNS front; apps answer with the Gateway's IP.
+    k8gb.io/exposed-ip-addresses: ${GATEWAY_IP}
+spec:
+  resourceRef:
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    name: gslb
+  strategy:
+    type: failover
+    primaryGeoTag: ${PRIMARY_GEO_TAG}
+    dnsTtlSeconds: 5
+---
+# SITE_HOST → GSLB_HOST in the parent zone, written by k8gb's own external-dns.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: site-cname # not "site": k8gb owns the DNSEndpoint named after the Gslb
+  labels:
+    k8gb.io/dnstype: extdns
+spec:
+  endpoints:
+    - dnsName: ${SITE_HOST}
+      recordType: CNAME
+      recordTTL: 60
+      targets:
+        - ${GSLB_HOST}

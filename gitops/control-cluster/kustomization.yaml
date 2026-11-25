@@ -1,0 +1,8 @@
+# What Flux syncs on the control cluster (FluxInstance sync path, set by terraform/bootstrap.tf):
+# the same Gateway, certificates and external-dns as the site clusters, then Prometheus, Grafana and
+# Chaos Mesh from gitops/control. Per-cluster values come from the cluster-vars ConfigMap.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - gateway-api.yaml
+  - flux.yaml

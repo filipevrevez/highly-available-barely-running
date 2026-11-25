@@ -1,0 +1,52 @@
+# What people open: SITE_HOST (via k8gb) and CLUSTER_HOST (this cluster directly).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: site
+spec:
+  parentRefs:
+    - name: ${GATEWAY_NAME:=public}
+      namespace: ${GATEWAY_NAMESPACE:=gateway-system}
+  hostnames:
+    - ${SITE_HOST}
+    - ${CLUSTER_HOST}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: podinfo
+          port: 9898
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /slides
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /slides.html
+      backendRefs:
+        - name: site
+          port: 80
+    - backendRefs:
+        - name: site
+          port: 80
+---
+# k8gb's view of the app: GSLB_HOST, healthy while podinfo has ready pods here.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gslb
+spec:
+  parentRefs:
+    - name: ${GATEWAY_NAME:=public}
+      namespace: ${GATEWAY_NAMESPACE:=gateway-system}
+  hostnames:
+    - ${GSLB_HOST}
+  rules:
+    - backendRefs:
+        - name: podinfo
+          port: 9898

@@ -1,0 +1,9 @@
+# What Flux syncs on the site clusters (FluxInstance sync path, set by terraform/bootstrap.tf).
+# The control cluster syncs gitops/control-cluster instead.
+# Per-cluster values come from ConfigMaps OpenTofu writes into flux-system:
+# cluster-vars (always) and gslb-vars (second apply: k8gb, the agent, the site and the failover floor wait for it).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - gateway-api.yaml
+  - flux.yaml

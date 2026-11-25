@@ -1,0 +1,166 @@
+# Order: CRDs, then charts, then their config, then k8gb (needs the DNS front) and the site.
+# The agent, the site and the failover floor wait for gslb-vars too (second Terraform apply).
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/infrastructure
+  prune: true
+  wait: true
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: gateway-api-crds
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: config
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/config
+  prune: true
+  wait: true
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gslb
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/gslb
+  prune: true
+  wait: true
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: config
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+      - kind: ConfigMap
+        name: gslb-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: site
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/app
+  prune: true
+  wait: false
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: gslb
+    - name: agent # podinfo's ServiceMonitor needs the agent's CRDs
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+      - kind: ConfigMap
+        name: gslb-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: keda
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/keda
+  prune: true
+  wait: true
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure
+---
+# Metrics to the control cluster: Prometheus in agent mode, remote-writing over the private network.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: agent
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/agent
+  prune: true
+  wait: true
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+      - kind: ConfigMap
+        name: gslb-vars
+---
+# The failover floor: scale podinfo up when the control cluster's probe of the peer cluster fails.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: failover
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/failover
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: keda
+    - name: site
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+      - kind: ConfigMap
+        name: gslb-vars
+---
+# Lets the control cluster's Chaos Mesh in (a cluster-admin ServiceAccount and its token).
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: chaos-target
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./gitops/chaos-target
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system

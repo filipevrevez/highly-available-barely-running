@@ -1,0 +1,55 @@
+# Chaos Mesh here drives experiments in the site clusters. For each RemoteCluster it installs its own
+# Chaos Mesh release there (Helm, with these values) and copies experiments that name it in
+# spec.remoteCluster. The kubeconfig Secrets (<cluster>-kubeconfig, key kubeconfig) are written by
+# Terraform on the second apply, from the ServiceAccount token gitops/chaos-target creates on each site cluster.
+# The namespace the experiments target must also exist here, so Chaos Mesh can hold the local object.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kcd
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: RemoteCluster
+metadata:
+  name: ${PRIMARY_CLUSTER}
+spec:
+  namespace: chaos-mesh
+  version: "2.8.8"
+  kubeConfig:
+    secretRef:
+      namespace: chaos-mesh
+      name: ${PRIMARY_CLUSTER}-kubeconfig
+      key: kubeconfig
+  configOverride:
+    chaosDaemon:
+      runtime: containerd
+      socketPath: /run/k0s/containerd.sock
+    controllerManager:
+      replicaCount: 1
+    dashboard:
+      create: false # one dashboard, here
+    dnsServer:
+      create: false
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: RemoteCluster
+metadata:
+  name: ${STANDBY_CLUSTER}
+spec:
+  namespace: chaos-mesh
+  version: "2.8.8"
+  kubeConfig:
+    secretRef:
+      namespace: chaos-mesh
+      name: ${STANDBY_CLUSTER}-kubeconfig
+      key: kubeconfig
+  configOverride:
+    chaosDaemon:
+      runtime: containerd
+      socketPath: /run/k0s/containerd.sock
+    controllerManager:
+      replicaCount: 1
+    dashboard:
+      create: false
+    dnsServer:
+      create: false

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who is answering you?</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: grid; place-items: center; text-align: center; font-family: system-ui, sans-serif; background: #0f0f10; color: #f4f2ee; transition: background .4s; padding: 24px; box-sizing: border-box; }
+  small { display: block; letter-spacing: .14em; text-transform: uppercase; opacity: .7; font-size: 14px; }
+  h1 { font-size: clamp(40px, 13vw, 120px); line-height: 1.02; margin: .25em 0; letter-spacing: -.03em; }
+  p { font-size: 16px; opacity: .75; margin: 0; font-variant-numeric: tabular-nums; }
+  header { position: fixed; left: 0; right: 0; top: 0; padding: 16px; font-size: 14px; font-weight: 700; letter-spacing: .02em; }
+  header span { opacity: .75; font-weight: 400; }
+  footer { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 12px; padding: 14px; flex-wrap: wrap; }
+  footer a { display: flex; align-items: center; gap: 8px; background: #0f0f10; color: #f4f2ee; text-decoration: none; font-size: 14px; font-weight: 600; padding: 9px 14px; border-radius: 999px; }
+  footer a:hover, footer a:focus-visible { outline: 2px solid #f4f2ee; }
+  footer img { height: 22px; width: auto; display: block; }
+</style>
+<header>Highly Available, Barely Running <span>· KCD Porto 2026</span></header>
+<main>
+  <small>You are being served by</small>
+  <h1 id="who">…</h1>
+  <p id="meta">connecting</p>
+</main>
+<footer>
+  <a href="https://supermodular.ai" target="_blank" rel="noopener"><img src="/assets/supermodular.svg" alt="">supermodular.ai</a>
+  <a href="https://www.millenniumbcp.pt" target="_blank" rel="noopener"><img src="/assets/millennium-bcp.svg" alt="Millennium bcp"></a>
+</footer>
+<script>
+  // Ask every 2 s. A failed or slow answer is shown as an outage, which is the point of the demo.
+  var who = document.getElementById('who'), meta = document.getElementById('meta'), downSince = 0;
+  function ask() {
+    var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 1800);
+    fetch('/api/info', { cache: 'no-store', signal: ctl.signal }).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (d) {
+      who.textContent = d.message; document.body.style.background = d.color; meta.textContent = 'pod ' + d.hostname; downSince = 0;
+    }).catch(function () {
+      if (!downSince) downSince = Date.now();
+      who.textContent = 'No answer'; document.body.style.background = '#0f0f10';
+      meta.textContent = 'down for ' + Math.round((Date.now() - downSince) / 1000) + ' s';
+    }).finally(function () { clearTimeout(t); });
+  }
+  ask(); setInterval(ask, 2000);
+</script>
+</html>

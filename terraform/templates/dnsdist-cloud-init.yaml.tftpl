@@ -1,0 +1,25 @@
+#cloud-config
+write_files:
+  # Free port 53 on all addresses for dnsdist; the host resolves through the upstream servers instead.
+  - path: /etc/systemd/resolved.conf.d/no-stub.conf
+    content: |
+      [Resolve]
+      DNSStubListener=no
+  # Kept on install (--force-confold), so it replaces the packaged default config.
+  - path: /etc/dnsdist/dnsdist.conf
+    content: |
+      setLocal("0.0.0.0:53")
+      setACL({"0.0.0.0/0", "::/0"})
+      -- The Gateway carries only TCP: health checks must use it too (they default to UDP).
+      newServer({address="${address}:53", name="${name}", tcpOnly=true, checkTCP=true, checkName="${zone}.", checkType="SOA", mustResolve=true})
+      -- Only k8gb's zone: refuse everything else so this is never an open resolver.
+      local zone = newSuffixMatchNode()
+      zone:add("${zone}.")
+      addAction(NotRule(SuffixMatchNodeRule(zone)), RCodeAction(DNSRCode.REFUSED))
+runcmd:
+  # The public IPv4 is attached after the server is created: retry until apt can reach the mirrors.
+  - [sh, -c, "until apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold dnsdist; do sleep 15; done"]
+  - [ln, -sf, /run/systemd/resolve/resolv.conf, /etc/resolv.conf]
+  - [systemctl, restart, systemd-resolved]
+  - [systemctl, enable, --now, dnsdist]
+  - [systemctl, restart, dnsdist]

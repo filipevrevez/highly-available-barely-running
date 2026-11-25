@@ -1,0 +1,17 @@
+# Lisboa's podinfo stops answering for 5 minutes; the cluster and the site pages stay up.
+# podinfo's pods fail their readiness checks, so k8gb drops Lisboa from its answer and the
+# control cluster's probe fails, which makes KEDA on the other cluster scale podinfo up.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: lisboa-down
+  namespace: kcd
+spec:
+  remoteCluster: lisboa
+  action: pod-failure
+  mode: all
+  duration: 5m
+  selector:
+    namespaces: [kcd]
+    labelSelectors:
+      app.kubernetes.io/name: podinfo
